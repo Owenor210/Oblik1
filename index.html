@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Облік</title>
+<meta name="theme-color" content="#2f54eb">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <h1 id="title">Облік</h1>
+  <button class="icon" data-a="settings" aria-label="Налаштування">⚙</button>
+</header>
+<main id="view"></main>
+<nav class="nav" id="nav">
+  <button data-tab="home">Головна</button>
+  <button data-tab="cal">Календар</button>
+  <button data-tab="work">Робота</button>
+  <button data-tab="rent">Оренда</button>
+  <button data-tab="stats">Статистика</button>
+</nav>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status"></div>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,30 +1,338 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Облік</title>
-<meta name="theme-color" content="#2f54eb">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080d18">
+  <meta name="description" content="Oblik1 — особистий фінансовий менеджер">
+  <link rel="manifest" href="/Oblik1/manifest.json">
+  <link rel="stylesheet" href="/Oblik1/css/style.css">
+  <title>Oblik1 — Мої фінанси</title>
 </head>
+
 <body>
-<header class="top">
-  <h1 id="title">Облік</h1>
-  <button class="icon" data-a="settings" aria-label="Налаштування">⚙</button>
-</header>
-<main id="view"></main>
-<nav class="nav" id="nav">
-  <button data-tab="home">Головна</button>
-  <button data-tab="cal">Календар</button>
-  <button data-tab="work">Робота</button>
-  <button data-tab="rent">Оренда</button>
-  <button data-tab="stats">Статистика</button>
-</nav>
-<dialog id="dlg"></dialog>
-<div id="toast" role="status"></div>
-<script src="js/app.js"></script>
+
+  <div class="app">
+
+    <!-- HEADER -->
+    <header class="topbar">
+      <div>
+        <div class="brand">Oblik<span>1</span></div>
+        <div class="subtitle">Мої фінанси</div>
+      </div>
+
+      <button class="icon-btn" onclick="openModal('settings')">
+        ⚙️
+      </button>
+    </header>
+
+    <!-- MAIN BALANCE -->
+    <section class="hero-card">
+      <div class="hero-label">Доступно зараз</div>
+      <div class="hero-balance" id="availableBalance">0 ₴</div>
+
+      <div class="hero-row">
+        <div>
+          <span>Доходи</span>
+          <strong id="monthIncome">0 ₴</strong>
+        </div>
+
+        <div>
+          <span>Витрати</span>
+          <strong id="monthExpenses">0 ₴</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUICK ACTIONS -->
+    <section class="quick-actions">
+
+      <button onclick="openModal('income')">
+        <div class="quick-icon income-icon">＋</div>
+        <span>Дохід</span>
+      </button>
+
+      <button onclick="openModal('expense')">
+        <div class="quick-icon expense-icon">−</div>
+        <span>Витрата</span>
+      </button>
+
+      <button onclick="openModal('debt')">
+        <div class="quick-icon debt-icon">💳</div>
+        <span>Борг</span>
+      </button>
+
+      <button onclick="openModal('subscription')">
+        <div class="quick-icon sub-icon">🔄</div>
+        <span>Підписка</span>
+      </button>
+
+    </section>
+
+    <!-- DEBTS -->
+    <section class="section">
+
+      <div class="section-title">
+        <h2>Борги</h2>
+        <button onclick="openModal('debt')">＋</button>
+      </div>
+
+      <div id="debtsList" class="cards-list">
+        <div class="empty-card">
+          <div>💳</div>
+          <strong>Боргів поки немає</strong>
+          <span>Додай борг, щоб бачити залишок та пріоритет погашення.</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FINANCE STATS -->
+    <section class="section">
+
+      <div class="section-title">
+        <h2>Цього місяця</h2>
+      </div>
+
+      <div class="stats-grid">
+
+        <div class="stat-card">
+          <span>Основна зарплата</span>
+          <strong id="mainSalary">0 ₴</strong>
+        </div>
+
+        <div class="stat-card">
+          <span>Додаткова</span>
+          <strong id="extraSalary">0 ₴</strong>
+        </div>
+
+        <div class="stat-card">
+          <span>Фінансова подушка</span>
+          <strong id="emergencyFund">0 ₴</strong>
+        </div>
+
+        <div class="stat-card">
+          <span>Всього боргів</span>
+          <strong id="totalDebt">0 ₴</strong>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- EMERGENCY FUND -->
+    <section class="section">
+
+      <div class="section-title">
+        <h2>Фінансова подушка</h2>
+        <button onclick="openModal('fund')">＋</button>
+      </div>
+
+      <div class="fund-card">
+
+        <div class="fund-top">
+          <div>
+            <span>Накопичено</span>
+            <strong id="fundAmount">0 ₴</strong>
+          </div>
+
+          <div class="fund-target">
+            <span>Ціль</span>
+            <strong id="fundTarget">0 ₴</strong>
+          </div>
+        </div>
+
+        <div class="progress">
+          <div id="fundProgress"></div>
+        </div>
+
+        <div class="fund-percent" id="fundPercent">0%</div>
+
+      </div>
+
+    </section>
+
+    <!-- SUBSCRIPTIONS -->
+    <section class="section">
+
+      <div class="section-title">
+        <h2>Підписки</h2>
+        <button onclick="openModal('subscription')">＋</button>
+      </div>
+
+      <div id="subscriptionsList" class="cards-list">
+        <div class="empty-card">
+          <div>🔄</div>
+          <strong>Підписок немає</strong>
+          <span>Додай щомісячні платежі, щоб контролювати їх.</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- MONTH PLAN -->
+    <section class="section">
+
+      <div class="section-title">
+        <h2>План на місяць</h2>
+      </div>
+
+      <div class="plan-card">
+
+        <div class="plan-row">
+          <span>Очікувані доходи</span>
+          <strong id="planIncome">0 ₴</strong>
+        </div>
+
+        <div class="plan-row">
+          <span>Обов'язкові витрати</span>
+          <strong id="planExpenses">0 ₴</strong>
+        </div>
+
+        <div class="plan-row">
+          <span>Підписки</span>
+          <strong id="planSubs">0 ₴</strong>
+        </div>
+
+        <div class="plan-divider"></div>
+
+        <div class="plan-row total">
+          <span>Залишиться</span>
+          <strong id="planRemaining">0 ₴</strong>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- WHAT IF -->
+    <section class="section">
+
+      <div class="section-title">
+        <h2>Що буде, якщо...</h2>
+      </div>
+
+      <div class="simulator-card">
+
+        <div class="simulator-label">
+          Додатково направити на борги
+        </div>
+
+        <div class="simulator-value">
+          <strong id="simulatorValue">0 ₴</strong>
+        </div>
+
+        <input
+          type="range"
+          id="simulator"
+          min="0"
+          max="50000"
+          step="500"
+          value="0"
+          oninput="updateSimulator()"
+        >
+
+        <div class="range-labels">
+          <span>0 ₴</span>
+          <span>50 000 ₴</span>
+        </div>
+
+        <div id="simulatorResult" class="simulator-result">
+          Додай борги, щоб побачити розрахунок.
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- EXTRA SALARY -->
+    <section class="section">
+
+      <div class="section-title">
+        <h2>Додатковий заробіток</h2>
+        <button onclick="openModal('work')">✏️</button>
+      </div>
+
+      <div class="work-card">
+
+        <div class="work-number">
+          <strong id="workDays">0</strong>
+          <span>днів</span>
+        </div>
+
+        <div class="work-info">
+          <span>Оплата за день</span>
+          <strong id="workRate">1 000 ₴</strong>
+        </div>
+
+        <div class="work-total">
+          <span>Разом</span>
+          <strong id="workTotal">0 ₴</strong>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+
+    <button class="active" onclick="scrollToTop()">
+      <span>⌂</span>
+      <small>Головна</small>
+    </button>
+
+    <button onclick="openModal('income')">
+      <span>＋</span>
+      <small>Дохід</small>
+    </button>
+
+    <button onclick="openModal('expense')">
+      <span>−</span>
+      <small>Витрата</small>
+    </button>
+
+    <button onclick="openModal('debt')">
+      <span>💳</span>
+      <small>Борги</small>
+    </button>
+
+    <button onclick="openModal('settings')">
+      <span>⚙</span>
+      <small>Налаштування</small>
+    </button>
+
+  </nav>
+
+  <!-- MODAL -->
+  <div id="modal" class="modal">
+
+    <div class="modal-backdrop" onclick="closeModal()"></div>
+
+    <div class="modal-sheet">
+
+      <div class="modal-header">
+        <h2 id="modalTitle">Додати</h2>
+        <button onclick="closeModal()">✕</button>
+      </div>
+
+      <form id="modalForm" onsubmit="submitModal(event)">
+
+        <div id="modalFields"></div>
+
+        <button class="primary-btn" type="submit">
+          Зберегти
+        </button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+  <script src="/Oblik1/js/app.js"></script>
+
 </body>
 </html>

@@ -1,4 +1,4 @@
-const STORAGE_KEY = "oblik1-v2";
+const STORAGE_KEY = "oblik1-v3";
 
 const defaultData = {
   incomes: [],
@@ -13,6 +13,9 @@ const defaultData = {
 
 let data = loadData();
 let currentModal = null;
+
+let calendarDate = new Date();
+let selectedDate = formatDate(new Date());
 
 function loadData() {
   try {
@@ -33,20 +36,24 @@ function loadData() {
 }
 
 function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(data)
+  );
+
   render();
-}
-
-function money(value) {
-  const number = Number(value) || 0;
-
-  return new Intl.NumberFormat("uk-UA", {
-    maximumFractionDigits: 0
-  }).format(number) + " ₴";
 }
 
 function number(value) {
   return Number(value) || 0;
+}
+
+function money(value) {
+  return (
+    new Intl.NumberFormat("uk-UA", {
+      maximumFractionDigits: 0
+    }).format(number(value)) + " ₴"
+  );
 }
 
 function esc(value) {
@@ -59,665 +66,1250 @@ function esc(value) {
 }
 
 /* =========================
+   DATE
+========================= */
+
+function formatDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+
+  return `${y}-${m}-${d}`;
+}
+
+function parseDate(value) {
+  const parts = value.split("-");
+
+  return new Date(
+    Number(parts[0]),
+    Number(parts[1]) - 1,
+    Number(parts[2])
+  );
+}
+
+function todayString() {
+  return formatDate(new Date());
+}
+
+/* =========================
+   CALENDAR
+========================= */
+
+function changeMonth(direction) {
+  calendarDate.setMonth(
+    calendarDate.getMonth() + direction
+  );
+
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const container =
+    document.getElementById("calendarDays");
+
+  if (!container) return;
+
+  const monthNames = [
+    "Січень",
+    "Лютий",
+    "Березень",
+    "Квітень",
+    "Травень",
+    "Червень",
+    "Липень",
+    "Серпень",
+    "Вересень",
+    "Жовтень",
+    "Листопад",
+    "Грудень"
+  ];
+
+  const month =
+    calendarDate.getMonth();
+
+  const year =
+    calendarDate.getFullYear();
+
+  setText(
+    "calendarMonth",
+    monthNames[month]
+  );
+
+  setText(
+    "calendarYear",
+    year
+  );
+
+  const firstDay =
+    new Date(year, month, 1);
+
+  let startDay =
+    firstDay.getDay();
+
+  // Неділя = 0.
+  // Для календаря початок з понеділка.
+  startDay =
+    startDay === 0
+      ? 6
+      : startDay - 1;
+
+  const daysInMonth =
+    new Date(
+      year,
+      month + 1,
+      0
+    ).getDate();
+
+  const previousMonthDays =
+    new Date(
+      year,
+      month,
+      0
+    ).getDate();
+
+  let html = "";
+
+  // Дні попереднього місяця
+  for (let i = startDay - 1; i >= 0; i--) {
+
+    const day =
+      previousMonthDays - i;
+
+    html += `
+      <button
+        class="calendar-day muted-day"
+        disabled
+      >
+        <span>${day}</span>
+      </button>
+    `;
+  }
+
+  // Поточний місяць
+  for (let day = 1; day <= daysInMonth; day++) {
+
+    const date =
+      new Date(year, month, day);
+
+    const dateString =
+      formatDate(date);
+
+    const dayIncomes =
+      data.incomes.filter(
+        item => item.date === dateString
+      );
+
+    const dayExpenses =
+      data.expenses.filter(
+        item => item.date === dateString
+      );
+
+    const incomeTotal =
+      dayIncomes.reduce(
+        (sum, item) =>
+          sum + number(item.amount),
+        0
+      );
+
+    const expenseTotal =
+      dayExpenses.reduce(
+        (sum, item) =>
+          sum + number(item.amount),
+        0
+      );
+
+    const isToday =
+      dateString === todayString();
+
+    const isSelected =
+      dateString === selectedDate;
+
+    let classes =
+      "calendar-day";
+
+    if (isToday) {
+      classes += " today";
+    }
+
+    if (isSelected) {
+      classes += " selected";
+    }
+
+    const hasIncome =
+      incomeTotal > 0;
+
+    const hasExpense =
+      expenseTotal > 0;
+
+    html += `
+      <button
+        class="${classes}"
+        onclick="selectCalendarDate('${dateString}')"
+      >
+
+        <span class="calendar-number">
+          ${day}
+        </span>
+
+        ${
+          hasIncome
+            ? `<small class="calendar-income">
+                +${formatShortMoney(incomeTotal)}
+               </small>`
+            : ""
+        }
+
+        ${
+          hasExpense
+            ? `<small class="calendar-expense">
+                -${formatShortMoney(expenseTotal)}
+               </small>`
+            : ""
+        }
+
+      </button>
+    `;
+  }
+
+  // Заповнення сітки до 42 клітинок
+  const currentCells =
+    startDay + daysInMonth;
+
+  const remainingCells =
+    currentCells <= 35
+      ? 35 - currentCells
+      : 42 - currentCells;
+
+  for (let day = 1; day <= remainingCells; day++) {
+
+    html += `
+      <button
+        class="calendar-day muted-day"
+        disabled
+      >
+        <span>${day}</span>
+      </button>
+    `;
+  }
+
+  container.innerHTML = html;
+
+  renderSelectedDay();
+}
+
+function formatShortMoney(value) {
+  const amount = number(value);
+
+  if (amount >= 1000000) {
+    return (
+      (amount / 1000000)
+        .toFixed(1)
+        .replace(".0", "") +
+      "м"
+    );
+  }
+
+  if (amount >= 1000) {
+    return (
+      (amount / 1000)
+        .toFixed(1)
+        .replace(".0", "") +
+      "к"
+    );
+  }
+
+  return amount;
+}
+
+function selectCalendarDate(date) {
+  selectedDate = date;
+
+  const parsed =
+    parseDate(date);
+
+  calendarDate =
+    new Date(
+      parsed.getFullYear(),
+      parsed.getMonth(),
+      1
+    );
+
+  renderCalendar();
+}
+
+function renderSelectedDay() {
+  const container =
+    document.getElementById(
+      "selectedDayInfo"
+    );
+
+  if (!container) return;
+
+  const incomes =
+    data.incomes.filter(
+      item => item.date === selectedDate
+    );
+
+  const expenses =
+    data.expenses.filter(
+      item => item.date === selectedDate
+    );
+
+  const totalIncome =
+    incomes.reduce(
+      (sum, item) =>
+        sum + number(item.amount),
+      0
+    );
+
+  const totalExpense =
+    expenses.reduce(
+      (sum, item) =>
+        sum + number(item.amount),
+      0
+    );
+
+  const date =
+    parseDate(selectedDate);
+
+  const formattedDate =
+    date.toLocaleDateString(
+      "uk-UA",
+      {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }
+    );
+
+  if (
+    incomes.length === 0 &&
+    expenses.length === 0
+  ) {
+
+    container.innerHTML = `
+      <div class="day-info-card-inner">
+
+        <div class="day-info-header">
+
+          <div>
+            <span>Вибраний день</span>
+            <strong>${formattedDate}</strong>
+          </div>
+
+          <button
+            onclick="openIncomeForDate('${selectedDate}')"
+          >
+            ＋
+          </button>
+
+        </div>
+
+        <div class="empty-day">
+          <div>💸</div>
+          <strong>Операцій немає</strong>
+          <span>
+            Додай дохід або витрату за цей день.
+          </span>
+        </div>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  let html = `
+    <div class="day-info-card-inner">
+
+      <div class="day-info-header">
+
+        <div>
+          <span>Вибраний день</span>
+          <strong>${formattedDate}</strong>
+        </div>
+
+        <button
+          onclick="openIncomeForDate('${selectedDate}')"
+        >
+          ＋
+        </button>
+
+      </div>
+
+      <div class="day-summary">
+
+        <div>
+          <span>Надійшло</span>
+          <strong class="income-text">
+            +${money(totalIncome)}
+          </strong>
+        </div>
+
+        <div>
+          <span>Витрачено</span>
+          <strong class="expense-text">
+            -${money(totalExpense)}
+          </strong>
+        </div>
+
+      </div>
+
+      <div class="transactions">
+  `;
+
+  incomes.forEach(item => {
+
+    html += `
+      <div class="transaction income-transaction">
+
+        <div class="transaction-icon">
+          💰
+        </div>
+
+        <div class="transaction-info">
+
+          <strong>
+            ${esc(item.name)}
+          </strong>
+
+          <span>
+            ${esc(item.sourceName || incomeSourceName(item.type))}
+          </span>
+
+        </div>
+
+        <strong class="income-text">
+          +${money(item.amount)}
+        </strong>
+
+      </div>
+    `;
+  });
+
+  expenses.forEach(item => {
+
+    html += `
+      <div class="transaction">
+
+        <div class="transaction-icon">
+          🛒
+        </div>
+
+        <div class="transaction-info">
+
+          <strong>
+            ${esc(item.name)}
+          </strong>
+
+          <span>
+            ${esc(item.category || "Витрата")}
+          </span>
+
+        </div>
+
+        <strong class="expense-text">
+          -${money(item.amount)}
+        </strong>
+
+      </div>
+    `;
+  });
+
+  html += `
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+function openIncomeForDate(date) {
+  selectedDate = date;
+  openModal("income");
+}
+
+/* =========================
    MODALS
 ========================= */
 
 function openModal(type) {
+
   currentModal = type;
 
-  const modal = document.getElementById("modal");
-  const title = document.getElementById("modalTitle");
-  const fields = document.getElementById("modalFields");
+  const modal =
+    document.getElementById("modal");
+
+  const title =
+    document.getElementById(
+      "modalTitle"
+    );
+
+  const fields =
+    document.getElementById(
+      "modalFields"
+    );
 
   let html = "";
 
   if (type === "income") {
-    title.textContent = "Додати дохід";
+
+    title.textContent =
+      "Додати дохід";
 
     html = `
       <div class="form-group">
-        <label>Тип доходу</label>
-        <select name="incomeType">
-          <option value="main">Основна зарплата</option>
-          <option value="extra">Додатковий дохід</option>
-          <option value="other">Інше</option>
+
+        <label>
+          Дата отримання
+        </label>
+
+        <input
+          name="date"
+          type="date"
+          value="${selectedDate}"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          Звідки гроші?
+        </label>
+
+        <select
+          name="incomeType"
+          id="incomeType"
+          onchange="toggleIncomeSource()"
+        >
+
+          <option value="main">
+            Основна зарплата
+          </option>
+
+          <option value="extra">
+            Додаткова зарплата
+          </option>
+
+          <option value="work">
+            Оплата за робочі дні
+          </option>
+
+          <option value="freelance">
+            Підробіток
+          </option>
+
+          <option value="business">
+            Бізнес
+          </option>
+
+          <option value="investment">
+            Інвестиції
+          </option>
+
+          <option value="gift">
+            Подарунок
+          </option>
+
+          <option value="other">
+            Інше
+          </option>
+
         </select>
+
       </div>
 
-      <div class="form-group">
-        <label>Сума</label>
-        <input name="amount" type="number" min="0" step="1" placeholder="Наприклад 10000" required>
+
+      <div
+        class="form-group"
+        id="customSourceGroup"
+        style="display:none"
+      >
+
+        <label>
+          Назва джерела
+        </label>
+
+        <input
+          name="customSource"
+          type="text"
+          placeholder="Наприклад продаж"
+        >
+
       </div>
 
+
       <div class="form-group">
-        <label>Назва</label>
-        <input name="name" type="text" placeholder="Наприклад зарплата">
+
+        <label>
+          Сума
+        </label>
+
+        <input
+          name="amount"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="Наприклад 10000"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          Коментар
+        </label>
+
+        <input
+          name="name"
+          type="text"
+          placeholder="Наприклад зарплата за вересень"
+        >
+
       </div>
     `;
   }
 
+
   if (type === "expense") {
-    title.textContent = "Додати витрату";
+
+    title.textContent =
+      "Додати витрату";
 
     html = `
-      <div class="form-group">
-        <label>Сума</label>
-        <input name="amount" type="number" min="0" step="1" placeholder="Наприклад 1500" required>
-      </div>
 
       <div class="form-group">
-        <label>Категорія</label>
+
+        <label>
+          Дата
+        </label>
+
+        <input
+          name="date"
+          type="date"
+          value="${selectedDate}"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          Сума
+        </label>
+
+        <input
+          name="amount"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="Наприклад 1500"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          Категорія
+        </label>
+
         <select name="category">
+
           <option>Їжа</option>
           <option>Житло</option>
+          <option>Оренда</option>
           <option>Транспорт</option>
           <option>Покупки</option>
           <option>Розваги</option>
+          <option>Комунальні</option>
           <option>Інше</option>
+
         </select>
+
       </div>
 
+
       <div class="form-group">
-        <label>Назва</label>
-        <input name="name" type="text" placeholder="Наприклад продукти">
+
+        <label>
+          Назва
+        </label>
+
+        <input
+          name="name"
+          type="text"
+          placeholder="Наприклад продукти"
+        >
+
       </div>
     `;
   }
+
 
   if (type === "debt") {
-    title.textContent = "Додати борг";
+
+    title.textContent =
+      "Додати борг";
 
     html = `
-      <div class="form-group">
-        <label>Назва боргу</label>
-        <input name="name" type="text" placeholder="Наприклад MFO" required>
-      </div>
 
       <div class="form-group">
-        <label>Сума боргу</label>
-        <input name="amount" type="number" min="0" step="1" placeholder="Наприклад 15000" required>
+
+        <label>
+          Назва боргу
+        </label>
+
+        <input
+          name="name"
+          type="text"
+          placeholder="Наприклад MFO"
+          required
+        >
+
       </div>
 
+
       <div class="form-group">
-        <label>Тип боргу</label>
+
+        <label>
+          Сума боргу
+        </label>
+
+        <input
+          name="amount"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="15000"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          Тип боргу
+        </label>
+
         <select name="type">
-          <option value="mfo">МФО</option>
-          <option value="credit">Кредит</option>
-          <option value="card">Кредитна картка</option>
-          <option value="person">Людина</option>
-          <option value="other">Інше</option>
+
+          <option value="mfo">
+            МФО
+          </option>
+
+          <option value="credit">
+            Кредит
+          </option>
+
+          <option value="card">
+            Кредитна картка
+          </option>
+
+          <option value="person">
+            Людина
+          </option>
+
+          <option value="other">
+            Інше
+          </option>
+
         </select>
+
       </div>
 
-      <div class="form-group">
-        <label>Відсоток на місяць (%)</label>
-        <input name="rate" type="number" min="0" step="0.01" placeholder="Наприклад 10">
-      </div>
 
       <div class="form-group">
-        <label>Комісія / додатковий платіж (₴)</label>
-        <input name="fee" type="number" min="0" step="1" placeholder="0">
+
+        <label>
+          Відсоток на місяць (%)
+        </label>
+
+        <input
+          name="rate"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="10"
+        >
+
       </div>
 
+
       <div class="form-group">
-        <label>Мінімальний платіж (₴)</label>
-        <input name="minPayment" type="number" min="0" step="1" placeholder="0">
+
+        <label>
+          Комісія (₴)
+        </label>
+
+        <input
+          name="fee"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="0"
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          Мінімальний платіж (₴)
+        </label>
+
+        <input
+          name="minPayment"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="0"
+        >
+
       </div>
     `;
   }
+
 
   if (type === "subscription") {
-    title.textContent = "Додати підписку";
+
+    title.textContent =
+      "Додати підписку";
 
     html = `
-      <div class="form-group">
-        <label>Назва</label>
-        <input name="name" type="text" placeholder="Наприклад Netflix" required>
-      </div>
 
       <div class="form-group">
-        <label>Щомісячна вартість</label>
-        <input name="amount" type="number" min="0" step="1" placeholder="Наприклад 299" required>
+
+        <label>
+          Назва
+        </label>
+
+        <input
+          name="name"
+          type="text"
+          placeholder="Netflix"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          Щомісячна вартість
+        </label>
+
+        <input
+          name="amount"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="299"
+          required
+        >
+
       </div>
     `;
   }
+
 
   if (type === "fund") {
-    title.textContent = "Фінансова подушка";
+
+    title.textContent =
+      "Фінансова подушка";
 
     html = `
-      <div class="form-group">
-        <label>Поточна сума подушки</label>
-        <input name="amount" type="number" min="0" step="1" value="${number(data.fund)}">
-      </div>
 
       <div class="form-group">
-        <label>Ціль подушки</label>
-        <input name="target" type="number" min="0" step="1" value="${number(data.fundTarget)}">
+
+        <label>
+          Поточна сума
+        </label>
+
+        <input
+          name="amount"
+          type="number"
+          min="0"
+          value="${number(data.fund)}"
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          Ціль
+        </label>
+
+        <input
+          name="target"
+          type="number"
+          min="0"
+          value="${number(data.fundTarget)}"
+        >
+
       </div>
     `;
   }
+
 
   if (type === "work") {
-    title.textContent = "Додатковий заробіток";
+
+    title.textContent =
+      "Додатковий заробіток";
 
     html = `
-      <div class="form-group">
-        <label>Кількість робочих днів</label>
-        <input name="days" type="number" min="0" step="1" value="${number(data.workDays)}">
-      </div>
 
       <div class="form-group">
-        <label>Оплата за день</label>
-        <input name="rate" type="number" min="0" step="1" value="${number(data.workRate)}">
+
+        <label>
+          Кількість робочих днів
+        </label>
+
+        <input
+          name="days"
+          type="number"
+          min="0"
+          value="${number(data.workDays)}"
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          Оплата за день
+        </label>
+
+        <input
+          name="rate"
+          type="number"
+          min="0"
+          value="${number(data.workRate)}"
+        >
+
       </div>
     `;
   }
+
 
   if (type === "settings") {
-    title.textContent = "Налаштування";
+
+    title.textContent =
+      "Налаштування";
 
     html = `
+
       <div class="form-group">
-        <label>Ціль фінансової подушки</label>
-        <input name="target" type="number" min="0" step="1" value="${number(data.fundTarget)}">
+
+        <label>
+          Ціль фінансової подушки
+        </label>
+
+        <input
+          name="target"
+          type="number"
+          min="0"
+          value="${number(data.fundTarget)}"
+        >
+
       </div>
     `;
   }
 
+
   fields.innerHTML = html;
+
   modal.classList.add("open");
-  document.body.style.overflow = "hidden";
+
+  document.body.style.overflow =
+    "hidden";
+}
+
+function toggleIncomeSource() {
+
+  const select =
+    document.getElementById(
+      "incomeType"
+    );
+
+  const group =
+    document.getElementById(
+      "customSourceGroup"
+    );
+
+  if (!select || !group) {
+    return;
+  }
+
+  group.style.display =
+    select.value === "other"
+      ? "block"
+      : "none";
 }
 
 function closeModal() {
-  const modal = document.getElementById("modal");
+
+  const modal =
+    document.getElementById(
+      "modal"
+    );
 
   modal.classList.remove("open");
-  document.body.style.overflow = "";
+
+  document.body.style.overflow =
+    "";
+
   currentModal = null;
 }
 
+/* =========================
+   SAVE MODAL
+========================= */
+
 function submitModal(event) {
+
   event.preventDefault();
 
-  const form = event.target;
-  const formData = new FormData(form);
+  const form =
+    event.target;
 
-  const get = (name) => formData.get(name);
+  const formData =
+    new FormData(form);
+
+  const get =
+    name => formData.get(name);
+
 
   if (currentModal === "income") {
+
+    const date =
+      get("date") || todayString();
+
+    const type =
+      get("incomeType");
+
+    const customSource =
+      get("customSource");
+
+    const source =
+      type === "other" &&
+      customSource
+        ? customSource
+        : incomeSourceName(type);
+
     data.incomes.push({
+
       id: Date.now(),
-      type: get("incomeType"),
-      amount: number(get("amount")),
-      name: get("name") || "Дохід",
-      date: new Date().toISOString()
+
+      date,
+
+      type,
+
+      sourceName: source,
+
+      amount:
+        number(
+          get("amount")
+        ),
+
+      name:
+        get("name") ||
+        source
+
     });
+
+    selectedDate =
+      date;
   }
+
 
   if (currentModal === "expense") {
+
+    const date =
+      get("date") || todayString();
+
     data.expenses.push({
+
       id: Date.now(),
-      amount: number(get("amount")),
-      category: get("category"),
-      name: get("name") || get("category"),
-      date: new Date().toISOString()
+
+      date,
+
+      amount:
+        number(
+          get("amount")
+        ),
+
+      category:
+        get("category"),
+
+      name:
+        get("name") ||
+        get("category")
+
     });
+
+    selectedDate =
+      date;
   }
+
 
   if (currentModal === "debt") {
+
     data.debts.push({
+
       id: Date.now(),
-      name: get("name") || "Борг",
-      amount: number(get("amount")),
-      type: get("type"),
-      rate: number(get("rate")),
-      fee: number(get("fee")),
-      minPayment: number(get("minPayment")),
+
+      name:
+        get("name") ||
+        "Борг",
+
+      amount:
+        number(
+          get("amount")
+        ),
+
+      type:
+        get("type"),
+
+      rate:
+        number(
+          get("rate")
+        ),
+
+      fee:
+        number(
+          get("fee")
+        ),
+
+      minPayment:
+        number(
+          get("minPayment")
+        ),
+
       paid: 0
+
     });
   }
+
 
   if (currentModal === "subscription") {
+
     data.subscriptions.push({
+
       id: Date.now(),
-      name: get("name"),
-      amount: number(get("amount"))
+
+      name:
+        get("name"),
+
+      amount:
+        number(
+          get("amount")
+        )
+
     });
   }
+
 
   if (currentModal === "fund") {
-    data.fund = number(get("amount"));
-    data.fundTarget = number(get("target"));
+
+    data.fund =
+      number(
+        get("amount")
+      );
+
+    data.fundTarget =
+      number(
+        get("target")
+      );
   }
+
 
   if (currentModal === "work") {
-    data.workDays = number(get("days"));
-    data.workRate = number(get("rate"));
+
+    data.workDays =
+      number(
+        get("days")
+      );
+
+    data.workRate =
+      number(
+        get("rate")
+      );
   }
+
 
   if (currentModal === "settings") {
-    data.fundTarget = number(get("target"));
+
+    data.fundTarget =
+      number(
+        get("target")
+      );
   }
 
+
   saveData();
+
   closeModal();
-}
 
-function deleteDebt(id) {
-  data.debts = data.debts.filter(debt => debt.id !== id);
-  saveData();
-}
-
-function deleteSubscription(id) {
-  data.subscriptions =
-    data.subscriptions.filter(sub => sub.id !== id);
-
-  saveData();
+  renderCalendar();
+  renderSelectedDay();
 }
 
 /* =========================
-   DEBT PRIORITY
+   INCOME SOURCES
 ========================= */
 
-function debtPriority(debt) {
-  let score = 0;
+function incomeSourceName(type) {
 
-  if (debt.type === "mfo") {
-    score += 30;
-  }
+  const sources = {
 
-  score += number(debt.rate) * 5;
-  score += number(debt.fee) * 3;
+    main:
+      "Основна зарплата",
 
-  if (number(debt.minPayment) > 0) {
-    score += 2;
-  }
+    extra:
+      "Додаткова зарплата",
 
-  return score;
-}
+    work:
+      "Оплата за робочі дні",
 
-function debtTypeName(type) {
-  const names = {
-    mfo: "МФО",
-    credit: "Кредит",
-    card: "Кредитна картка",
-    person: "Людина",
-    other: "Інше"
+    freelance:
+      "Підробіток",
+
+    business:
+      "Бізнес",
+
+    investment:
+      "Інвестиції",
+
+    gift:
+      "Подарунок",
+
+    other:
+      "Інше"
+
   };
 
-  return names[type] || "Інше";
+  return (
+    sources[type] ||
+    "Інше"
+  );
 }
 
 /* =========================
-   RENDER
-========================= */
-
-function render() {
-  const mainIncome = data.incomes
-    .filter(item => item.type === "main")
-    .reduce((sum, item) => sum + number(item.amount), 0);
-
-  const extraIncome = data.incomes
-    .filter(item => item.type === "extra")
-    .reduce((sum, item) => sum + number(item.amount), 0);
-
-  const otherIncome = data.incomes
-    .filter(item => item.type === "other")
-    .reduce((sum, item) => sum + number(item.amount), 0);
-
-  const workTotal =
-    number(data.workDays) * number(data.workRate);
-
-  const totalIncome =
-    mainIncome +
-    extraIncome +
-    otherIncome +
-    workTotal;
-
-  const totalExpenses = data.expenses
-    .reduce((sum, item) => sum + number(item.amount), 0);
-
-  const subscriptionTotal = data.subscriptions
-    .reduce((sum, item) => sum + number(item.amount), 0);
-
-  const totalDebt = data.debts
-    .reduce((sum, debt) => {
-      const balance =
-        Math.max(0, number(debt.amount) - number(debt.paid));
-
-      return sum + balance;
-    }, 0);
-
-  const available =
-    totalIncome -
-    totalExpenses -
-    subscriptionTotal -
-    totalDebt;
-
-  setText("availableBalance", money(available));
-  setText("monthIncome", money(totalIncome));
-  setText("monthExpenses", money(totalExpenses));
-
-  setText("mainSalary", money(mainIncome));
-  setText("extraSalary", money(extraIncome + workTotal));
-  setText("emergencyFund", money(data.fund));
-  setText("totalDebt", money(totalDebt));
-
-  setText("fundAmount", money(data.fund));
-  setText("fundTarget", money(data.fundTarget));
-
-  const percentage =
-    data.fundTarget > 0
-      ? Math.min(100, (data.fund / data.fundTarget) * 100)
-      : 0;
-
-  const progress = document.getElementById("fundProgress");
-
-  if (progress) {
-    progress.style.width = percentage + "%";
-  }
-
-  setText(
-    "fundPercent",
-    Math.round(percentage) + "%"
-  );
-
-  setText("planIncome", money(totalIncome));
-  setText(
-    "planExpenses",
-    money(totalExpenses)
-  );
-  setText(
-    "planSubs",
-    money(subscriptionTotal)
-  );
-
-  const remaining =
-    totalIncome -
-    totalExpenses -
-    subscriptionTotal;
-
-  setText("planRemaining", money(remaining));
-
-  setText("workDays", data.workDays);
-  setText("workRate", money(data.workRate));
-  setText("workTotal", money(workTotal));
-
-  renderDebts();
-  renderSubscriptions();
-  updateSimulator();
-}
-
-function renderDebts() {
-  const container = document.getElementById("debtsList");
-
-  if (!data.debts.length) {
-    container.innerHTML = `
-      <div class="empty-card">
-        <div>💳</div>
-        <strong>Боргів поки немає</strong>
-        <span>
-          Додай борг, щоб бачити залишок та пріоритет погашення.
-        </span>
-      </div>
-    `;
-
-    return;
-  }
-
-  const debts = [...data.debts]
-    .map(debt => ({
-      ...debt,
-      priority: debtPriority(debt),
-      balance: Math.max(
-        0,
-        number(debt.amount) - number(debt.paid)
-      )
-    }))
-    .sort((a, b) => b.priority - a.priority);
-
-  container.innerHTML = debts.map((debt, index) => {
-
-    const original = number(debt.amount);
-
-    const paidPercent =
-      original > 0
-        ? Math.min(100, (number(debt.paid) / original) * 100)
-        : 0;
-
-    return `
-      <div class="debt-card ${index === 0 ? "priority" : ""}">
-
-        <div class="debt-head">
-
-          <div>
-            <div class="debt-name">
-              ${esc(debt.name)}
-            </div>
-
-            <div class="debt-type">
-              ${esc(debtTypeName(debt.type))}
-            </div>
-
-            ${
-              index === 0
-                ? `<div class="priority-badge">
-                    🔥 Погасити в першу чергу
-                   </div>`
-                : ""
-            }
-          </div>
-
-          <div class="debt-balance">
-            ${money(debt.balance)}
-          </div>
-
-        </div>
-
-        <div class="debt-details">
-
-          <div class="debt-detail">
-            <span>Ставка</span>
-            <strong>${number(debt.rate)}%</strong>
-          </div>
-
-          <div class="debt-detail">
-            <span>Комісія</span>
-            <strong>${money(debt.fee)}</strong>
-          </div>
-
-          <div class="debt-detail">
-            <span>Мін. платіж</span>
-            <strong>${money(debt.minPayment)}</strong>
-          </div>
-
-        </div>
-
-        <div class="item-progress">
-          <div style="width:${paidPercent}%"></div>
-        </div>
-
-        <button
-          onclick="deleteDebt(${debt.id})"
-          style="
-            margin-top:12px;
-            background:transparent;
-            color:var(--muted);
-            font-size:11px;
-          "
-        >
-          Видалити борг
-        </button>
-
-      </div>
-    `;
-  }).join("");
-}
-
-function renderSubscriptions() {
-  const container =
-    document.getElementById("subscriptionsList");
-
-  if (!data.subscriptions.length) {
-    container.innerHTML = `
-      <div class="empty-card">
-        <div>🔄</div>
-        <strong>Підписок немає</strong>
-        <span>
-          Додай щомісячні платежі, щоб контролювати їх.
-        </span>
-      </div>
-    `;
-
-    return;
-  }
-
-  container.innerHTML =
-    data.subscriptions.map(sub => `
-      <div class="item-card">
-
-        <div class="item-top">
-
-          <div>
-            <div class="item-name">
-              ${esc(sub.name)}
-            </div>
-
-            <div class="item-meta">
-              Щомісячна оплата
-            </div>
-          </div>
-
-          <div class="item-amount">
-            ${money(sub.amount)}
-          </div>
-
-        </div>
-
-        <button
-          onclick="deleteSubscription(${sub.id})"
-          style="
-            margin-top:10px;
-            background:transparent;
-            color:var(--muted);
-            font-size:11px;
-          "
-        >
-          Видалити
-        </button>
-
-      </div>
-    `).join("");
-}
-
-/* =========================
-   SIMULATOR
-========================= */
-
-function updateSimulator() {
-  const slider = document.getElementById("simulator");
-
-  if (!slider) {
-    return;
-  }
-
-  const extra = number(slider.value);
-
-  setText("simulatorValue", money(extra));
-
-  const result =
-    document.getElementById("simulatorResult");
-
-  if (!data.debts.length) {
-    result.textContent =
-      "Додай борги, щоб побачити розрахунок.";
-
-    return;
-  }
-
-  const totalDebt = data.debts.reduce(
-    (sum, debt) =>
-      sum +
-      Math.max(
-        0,
-        number(debt.amount) - number(debt.paid)
-      ),
-    0
-  );
-
-  const after =
-    Math.max(0, totalDebt - extra);
-
-  const paid =
-    Math.min(extra, totalDebt);
-
-  const priority =
-    [...data.debts]
-      .sort((a, b) =>
-        debtPriority(b) - debtPriority(a)
-      )[0];
-
-  result.innerHTML = `
-    Якщо додатково направити
-    <strong>${money(extra)}</strong>
-    на борги, залишиться приблизно
-    <strong>${money(after)}</strong>.
-
-    <br><br>
-
-    Першим варто враховувати:
-    <strong>${esc(priority.name)}</strong>.
-
-    <br>
-
-    Погашення:
-    <strong>${money(paid)}</strong>.
-  `;
-}
-
-/* =========================
-   HELPERS
-========================= */
-
-function setText(id, value) {
-  const element = document.getElementById(id);
-
-  if (element) {
-    element.textContent = value;
-  }
-}
-
-function scrollToTop() {
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-}
-
-/* =========================
-   START
-========================= */
-
-document.addEventListener("DOMContentLoaded", () => {
-  render();
-
-  const modal = document.getElementById("modal");
-
-  if (modal) {
-    modal.addEventListener("click", event => {
-      if (event.target === modal) {
-        closeModal();
-      }
-    });
-  }
-});
-
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.submitModal = submitModal;
-window.deleteDebt = deleteDebt;
-window.deleteSubscription = deleteSubscription;
-window.updateSimulator = updateSimulator;
-window.scrollToTop = scrollToTop;

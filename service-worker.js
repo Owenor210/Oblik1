@@ -1,50 +1,44 @@
-// Service Worker для Обліку
-const V = 'oblik-v3';
+const CACHE_NAME = "oblik1-v3";
 
 const FILES = [
-  '/Oblik1/',
-  '/Oblik1/index.html',
-  '/Oblik1/css/style.css',
-  '/Oblik1/js/app.js',
-  '/Oblik1/manifest.json',
-  '/Oblik1/icons/icon-192.png',
-  '/Oblik1/icons/icon-512.png',
-  '/Oblik1/icons/icon-maskable-512.png'
+  "/Oblik1/",
+  "/Oblik1/index.html",
+  "/Oblik1/css/style.css",
+  "/Oblik1/js/app.js",
+  "/Oblik1/manifest.json",
+  "/Oblik1/icons/icon-192.png",
+  "/Oblik1/icons/icon-512.png",
+  "/Oblik1/icons/icon-maskable-512.png"
 ];
 
-// Встановлення
-self.addEventListener('install', event => {
+self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(V)
-      .then(cache => cache.addAll(FILES))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(FILES);
+    })
   );
+
+  self.skipWaiting();
 });
 
-// Активація
-self.addEventListener('activate', event => {
+self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys()
-      .then(keys =>
-        Promise.all(
-          keys
-            .filter(key => key !== V)
-            .map(key => caches.delete(key))
-        )
-      )
-      .then(() => self.clients.claim())
+    caches.keys().then(keys => {
+      return Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      );
+    })
   );
+
+  self.clients.claim();
 });
 
-// Робота офлайн
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
-
+self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
-      })
-      .catch(() => caches.match('/Oblik1/index.html'))
+    caches.match(event.request).then(cached => {
+      return cached || fetch(event.request);
+    })
   );
 });

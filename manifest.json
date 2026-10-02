@@ -1,15 +1,18 @@
 {
-  "id": "/Oblik1/",
-  "name": "Oblik1 — Мої фінанси",
+  "name": "Oblik1 — Фінансовий облік",
   "short_name": "Oblik1",
-  "description": "Особистий фінансовий менеджер",
-  "lang": "uk",
+  "description": "Особистий фінансовий облік: зарплата, доходи, витрати, борги, підписки та фінансова подушка.",
   "start_url": "/Oblik1/",
   "scope": "/Oblik1/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#070b14",
-  "theme_color": "#080d18",
+  "background_color": "#07100d",
+  "theme_color": "#07100d",
+  "lang": "uk",
+  "categories": [
+    "finance",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/Oblik1/icons/icon-192.png",

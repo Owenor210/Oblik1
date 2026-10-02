@@ -1,16 +1,15 @@
 {
   "id": "/Oblik1/",
-  "name": "Облік роботи та оренди",
-  "short_name": "Облік",
-  "description": "Облік роботи, заробітку, оренди та статистики.",
+  "name": "Oblik1 — Мої фінанси",
+  "short_name": "Oblik1",
+  "description": "Особистий фінансовий менеджер",
   "lang": "uk",
   "start_url": "/Oblik1/",
   "scope": "/Oblik1/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#edf1f6",
-  "theme_color": "#2f54eb",
-  "prefer_related_applications": false,
+  "background_color": "#070b14",
+  "theme_color": "#080d18",
   "icons": [
     {
       "src": "/Oblik1/icons/icon-192.png",
